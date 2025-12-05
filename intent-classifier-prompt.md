@@ -22,6 +22,8 @@ Analizar cada mensaje del usuario y clasificarlo en una o más intenciones:
 - **conversation**: Conversación general, saludos, preguntas no relacionadas con métricas
 - **unauthorized_request**: Intentos de guardar o consultar datos de terceras personas
 
+**REGLA CRÍTICA DE AGRUPACIÓN**: Cuando el usuario menciona múltiples métricas del MISMO DÍA, agrúpalas en UNA SOLA intención save_metric con todos los campos rellenos. Solo crea intenciones separadas si las fechas son DIFERENTES.
+
 ## USO DE CONTEXTO CONVERSACIONAL
 
 Recibirás el historial de mensajes anteriores de la conversación que DEBES usar para resolver referencias implícitas y pronombres indefinidos.
@@ -67,13 +69,16 @@ Debes devolver EXACTAMENTE esta estructura JSON sin texto adicional:
         "steps": 8000,
         "sleep_hours": null,
         "fatigue_level": null,
-        "stress_level": null
+        "stress_level": null,
+        "natural_query": "guardar métricas del DD/MM/AAAA: pasos: 8000"
       },
       "source_fragment": "caminé 8000 pasos"
     }]
   }]
 }
 ```
+
+**OBSERVA**: El campo "natural_query" usa SIEMPRE el formato `"guardar métricas del DD/MM/AAAA: <lista de métricas>"`. Este formato es OBLIGATORIO y NO debe variar.
 
 ### Estructura detallada:
 
@@ -95,9 +100,26 @@ Debes devolver EXACTAMENTE esta estructura JSON sin texto adicional:
   "sleep_hours": <número o null>,
   "fatigue_level": <1-10 o null>,
   "stress_level": <1-10 o null>,
-  "natural_query": "<descripción con fecha única DD/MM/AAAA>"
+  "natural_query": "guardar métricas del DD/MM/AAAA: <métricas encontradas>"
 }
 ```
+
+**Formato OBLIGATORIO para natural_query en save_metric**:
+- **Siempre** usar: `"guardar métricas del DD/MM/AAAA: <lista de métricas>"`
+- Fecha en formato DD/MM/AAAA (ejemplo: 05/12/2024)
+- Lista solo las métricas que tienen valor (no null), separadas por comas
+- Formato de cada métrica:
+  - Peso: "peso: X kg"
+  - Sueño: "sueño: Xh" o "sueño: Xh Ymin"
+  - Pasos: "pasos: X"
+  - Fatiga: "fatiga: X/10"
+  - Estrés: "estrés: X/10"
+
+**Ejemplos de natural_query**:
+- `"guardar métricas del 05/12/2024: peso: 75 kg"`
+- `"guardar métricas del 05/12/2024: peso: 75 kg, sueño: 7h, pasos: 8000"`
+- `"guardar métricas del 05/12/2024: fatiga: 9/10, estrés: 9/10"`
+- `"guardar métricas del 04/12/2024: sueño: 7h 30min, pasos: 10000"`
 
 **Para query_metric**:
 ```json
@@ -106,30 +128,46 @@ Debes devolver EXACTAMENTE esta estructura JSON sin texto adicional:
 }
 ```
 
-**Reglas para natural_query (aplica tanto a save_metric como query_metric):**
-- Debe ser una frase corta y clara (máximo 20 palabras)
-- **OBLIGATORIO**: SIEMPRE incluir fecha exacta en formato DD/MM/AAAA (día, mes, año numérico)
-- **Puede contener**: Una fecha única (DD/MM/AAAA) o un rango de fechas (DD/MM/AAAA al DD/MM/AAAA)
-- Para save_metric: Formato "guardar [métrica] del DD/MM/AAAA: [valor]" (siempre fecha única)
-- Para query_metric:
-  - Fecha única: "[operación] de [métrica] del DD/MM/AAAA"
-  - Rango de fechas: "[operación] de [métrica] del DD/MM/AAAA al DD/MM/AAAA"
-- Debe resolver referencias contextuales (no usar "la", "eso", sino el nombre de la métrica)
+**Reglas para natural_query:**
+
+**Para save_metric**:
+- **FORMATO OBLIGATORIO**: `"guardar métricas del DD/MM/AAAA: <lista de métricas>"`
+- Fecha en formato DD/MM/AAAA (siempre fecha única)
+- Lista SOLO las métricas con valor (no null), separadas por comas
+- Formato específico por métrica:
+  - Peso: "peso: X kg"
+  - Sueño: "sueño: Xh" o "sueño: Xh Ymin" (convierte decimales: 7.5 = 7h 30min)
+  - Pasos: "pasos: X"
+  - Fatiga: "fatiga: X/10"
+  - Estrés: "estrés: X/10"
+
+**Para query_metric**:
+- Fecha única: "[operación] de [métrica] del DD/MM/AAAA"
+- Rango de fechas: "[operación] de [métrica] del DD/MM/AAAA al DD/MM/AAAA"
+- Métricas faltantes: "buscar métricas faltantes (null) del DD/MM/AAAA"
+
+**Cálculo de fechas**:
 - **Usa {{ $now.format('YYYY-MM-DD') }} como referencia** para calcular todas las fechas relativas:
   - "hoy" → convertir a DD/MM/AAAA usando {{ $now.format('YYYY-MM-DD') }}
   - "ayer" → calcular un día antes de {{ $now.format('YYYY-MM-DD') }}
   - "esta semana" → rango de 7 días hasta {{ $now.format('YYYY-MM-DD') }}
   - "mes de noviembre" → rango completo del mes (01/11/AAAA al 30/11/AAAA)
-- **Caso especial - Métricas faltantes**: "buscar métricas faltantes (null) del DD/MM/AAAA" (siempre fecha única)
+- Debe resolver referencias contextuales (no usar "la", "eso", sino el nombre de la métrica)
 
-**Ejemplos** (usando {{ $now.format('YYYY-MM-DD') }} como fecha actual):
-- "Hoy pesé 70kg" → "natural_query": "guardar peso del DD/MM/AAAA: 70 kg" (fecha única)
-- "Ayer dormí 8 horas" → "natural_query": "guardar sueño del DD/MM/AAAA: 8 horas" (fecha única)
-- "¿Cuántos pasos di ayer?" → "natural_query": "pasos del DD/MM/AAAA" (fecha única)
-- "¿Qué datos me faltan hoy?" → "natural_query": "buscar métricas faltantes (null) del DD/MM/AAAA" (fecha única)
-- "¿Peso promedio de noviembre?" → "natural_query": "promedio de peso del 01/11/AAAA al 30/11/AAAA" (rango de fechas)
-- "¿Estrés esta semana?" → "natural_query": "promedio de estrés del DD/MM/AAAA al DD/MM/AAAA" (rango de 7 días)
-- "Estoy cansado" → "natural_query": "guardar fatiga del DD/MM/AAAA: nivel 8" (fecha única)
+**Ejemplos de natural_query para save_metric** (usando {{ $now.format('YYYY-MM-DD') }} = 05/12/2024):
+- "Hoy pesé 70kg" → `"guardar métricas del 05/12/2024: peso: 70 kg"`
+- "Ayer dormí 8 horas" → `"guardar métricas del 04/12/2024: sueño: 8h"`
+- "He dormido 7h y mis pasos son 10000" → `"guardar métricas del 05/12/2024: sueño: 7h, pasos: 10000"`
+- "Estoy agotado y muy estresado" → `"guardar métricas del 05/12/2024: fatiga: 9/10, estrés: 9/10"`
+- "Peso 75kg y dormí 7.5 horas" → `"guardar métricas del 05/12/2024: peso: 75 kg, sueño: 7h 30min"`
+- "Hoy peso 70kg, dormí 8h, caminé 10000 pasos y estoy algo estresado" → `"guardar métricas del 05/12/2024: peso: 70 kg, sueño: 8h, pasos: 10000, estrés: 6/10"`
+
+**NOTA IMPORTANTE**: Observa que el formato es SIEMPRE el mismo: `"guardar métricas del DD/MM/AAAA: <lista>"`. NO uses variaciones como "guardar peso del...", "guardar sueño del...", etc. SIEMPRE usa "guardar métricas del...".
+
+**Ejemplos de natural_query para query_metric**:
+- "¿Cuántos pasos di ayer?" → `"pasos del 04/12/2024"`
+- "¿Qué datos me faltan hoy?" → `"buscar métricas faltantes (null) del 05/12/2024"`
+- "¿Peso promedio de noviembre?" → `"promedio de peso del 01/11/2024 al 30/11/2024"`
 
 **Para conversation**:
 ```json
@@ -182,10 +220,14 @@ Debes devolver EXACTAMENTE esta estructura JSON sin texto adicional:
 - Si el mensaje contiene métricas Y saludos → solo clasificar las métricas
 - Ejemplo: "Hola! Hoy pesé 75kg" → solo save_metric, NO conversation
 
-### Regla 3: Múltiples intenciones en un mensaje
-- Un mensaje puede tener múltiples métricas → múltiples objetos en "intents"
+### Regla 3: Agrupación de métricas por fecha
+- **IMPORTANTE**: Agrupa todas las métricas de la MISMA FECHA en UNA SOLA intención save_metric
+- Si el mensaje contiene métricas de DIFERENTES FECHAS → crea múltiples intenciones save_metric, una por cada fecha
 - Un mensaje puede combinar save_metric Y query_metric
-- Ejemplo: "Peso 75kg y dormí 7 horas" → 2 intenciones save_metric con diferentes source_fragment
+- Ejemplos:
+  - "Peso 75kg y dormí 7 horas" (ambas de hoy) → 1 intención save_metric con weight=75 y sleep_hours=7
+  - "Hoy peso 67kg y ayer pesé 65kg" (diferentes fechas) → 2 intenciones save_metric separadas
+  - "He dormido 7h y mis pasos son 10000" (ambas de hoy) → 1 intención save_metric con sleep_hours=7 y steps=10000
 
 ### Regla 4: Prioridad de categorías
 1. unauthorized_request (máxima prioridad)
@@ -227,7 +269,7 @@ Debes devolver EXACTAMENTE esta estructura JSON sin texto adicional:
         "sleep_hours": null,
         "fatigue_level": null,
         "stress_level": null,
-        "natural_query": "guardar peso del 05/12/2024: 75 kg"
+        "natural_query": "guardar métricas del 05/12/2024: peso: 75 kg"
       },
       "source_fragment": "pesé 75kg"
     }]
@@ -235,7 +277,7 @@ Debes devolver EXACTAMENTE esta estructura JSON sin texto adicional:
 }
 ```
 
-### Ejemplo 2: Múltiples métricas
+### Ejemplo 2: Múltiples métricas del mismo día (AGRUPADAS)
 **Entrada**: "Peso 75kg y dormí 7 horas. Caminé 8000 pasos" (asumiendo que hoy es 05/12/2024)
 **Salida**:
 ```json
@@ -246,39 +288,42 @@ Debes devolver EXACTAMENTE esta estructura JSON sin texto adicional:
       "category": "save_metric",
       "data": {
         "weight": 75,
-        "steps": null,
-        "sleep_hours": null,
-        "fatigue_level": null,
-        "stress_level": null,
-        "natural_query": "guardar peso del 05/12/2024: 75 kg"
-      },
-      "source_fragment": "Peso 75kg"
-    }, {
-      "category": "save_metric",
-      "data": {
-        "weight": null,
-        "steps": null,
+        "steps": 8000,
         "sleep_hours": 7,
         "fatigue_level": null,
         "stress_level": null,
-        "natural_query": "guardar sueño del 05/12/2024: 7 horas"
+        "natural_query": "guardar métricas del 05/12/2024: peso: 75 kg, sueño: 7h, pasos: 8000"
       },
-      "source_fragment": "dormí 7 horas"
-    }, {
-      "category": "save_metric",
-      "data": {
-        "weight": null,
-        "steps": 8000,
-        "sleep_hours": null,
-        "fatigue_level": null,
-        "stress_level": null,
-        "natural_query": "guardar pasos del 05/12/2024: 8000"
-      },
-      "source_fragment": "Caminé 8000 pasos"
+      "source_fragment": "Peso 75kg y dormí 7 horas. Caminé 8000 pasos"
     }]
   }]
 }
 ```
+**Justificación**: Todas las métricas son del mismo día (hoy), por lo tanto se agrupan en UNA SOLA intención con todos los campos rellenos.
+
+### Ejemplo 2b: Otro ejemplo de agrupación (mismo día)
+**Entrada**: "He dormido 7h y mis pasos son 10000" (asumiendo que hoy es 05/12/2024)
+**Salida**:
+```json
+{
+  "messages": [{
+    "original_message": "He dormido 7h y mis pasos son 10000",
+    "intents": [{
+      "category": "save_metric",
+      "data": {
+        "weight": null,
+        "steps": 10000,
+        "sleep_hours": 7,
+        "fatigue_level": null,
+        "stress_level": null,
+        "natural_query": "guardar métricas del 05/12/2024: sueño: 7h, pasos: 10000"
+      },
+      "source_fragment": "He dormido 7h y mis pasos son 10000"
+    }]
+  }]
+}
+```
+**Justificación**: Ambas métricas (sueño y pasos) son del mismo día (hoy), por lo tanto se agrupan en UNA SOLA intención con sleep_hours=7 y steps=10000.
 
 ### Ejemplo 3: Fatiga y estrés implícitos
 **Entrada**: "Estoy agotado y muy estresado" (asumiendo que hoy es 05/12/2024)
@@ -295,7 +340,7 @@ Debes devolver EXACTAMENTE esta estructura JSON sin texto adicional:
         "sleep_hours": null,
         "fatigue_level": 9,
         "stress_level": 9,
-        "natural_query": "guardar fatiga del 05/12/2024: nivel 9 y estrés: nivel 9"
+        "natural_query": "guardar métricas del 05/12/2024: fatiga: 9/10, estrés: 9/10"
       },
       "source_fragment": "agotado y muy estresado"
     }]
@@ -303,7 +348,42 @@ Debes devolver EXACTAMENTE esta estructura JSON sin texto adicional:
 }
 ```
 
-### Ejemplo 4: Consulta de métricas
+### Ejemplo 4: Múltiples métricas de DIFERENTES fechas (SEPARADAS)
+**Entrada**: "Hoy peso 67kg y ayer pesé 65kg" (asumiendo que hoy es 05/12/2024)
+**Salida**:
+```json
+{
+  "messages": [{
+    "original_message": "Hoy peso 67kg y ayer pesé 65kg",
+    "intents": [{
+      "category": "save_metric",
+      "data": {
+        "weight": 67,
+        "steps": null,
+        "sleep_hours": null,
+        "fatigue_level": null,
+        "stress_level": null,
+        "natural_query": "guardar métricas del 05/12/2024: peso: 67 kg"
+      },
+      "source_fragment": "Hoy peso 67kg"
+    }, {
+      "category": "save_metric",
+      "data": {
+        "weight": 65,
+        "steps": null,
+        "sleep_hours": null,
+        "fatigue_level": null,
+        "stress_level": null,
+        "natural_query": "guardar métricas del 04/12/2024: peso: 65 kg"
+      },
+      "source_fragment": "ayer pesé 65kg"
+    }]
+  }]
+}
+```
+**Justificación**: Las métricas son de fechas DIFERENTES (hoy 05/12/2024 y ayer 04/12/2024), por lo tanto se crean 2 intenciones separadas, una por cada fecha.
+
+### Ejemplo 5: Consulta de métricas
 **Entrada**: "¿Cuál fue mi peso promedio la semana pasada?" (asumiendo que hoy es 05/12/2024)
 **Salida**:
 ```json
@@ -321,7 +401,7 @@ Debes devolver EXACTAMENTE esta estructura JSON sin texto adicional:
 }
 ```
 
-### Ejemplo 5: Save + Query combinados
+### Ejemplo 6: Save + Query combinados
 **Entrada**: "Hoy caminé 8000 pasos, ¿cuál es mi promedio esta semana?" (asumiendo que hoy es 05/12/2024)
 **Salida**:
 ```json
@@ -336,7 +416,7 @@ Debes devolver EXACTAMENTE esta estructura JSON sin texto adicional:
         "sleep_hours": null,
         "fatigue_level": null,
         "stress_level": null,
-        "natural_query": "guardar pasos del 05/12/2024: 8000"
+        "natural_query": "guardar métricas del 05/12/2024: pasos: 8000"
       },
       "source_fragment": "caminé 8000 pasos"
     }, {
@@ -350,7 +430,7 @@ Debes devolver EXACTAMENTE esta estructura JSON sin texto adicional:
 }
 ```
 
-### Ejemplo 6: Solicitud no autorizada
+### Ejemplo 7: Solicitud no autorizada
 **Entrada**: "¿Cuánto pesa Juan?"
 **Salida**:
 ```json
@@ -368,7 +448,7 @@ Debes devolver EXACTAMENTE esta estructura JSON sin texto adicional:
 }
 ```
 
-### Ejemplo 7: Saludo con métrica (ignorar saludo)
+### Ejemplo 8: Saludo con métrica (ignorar saludo)
 **Entrada**: "Hola! Hoy caminé 5000 pasos" (asumiendo que hoy es 05/12/2024)
 **Salida**:
 ```json
@@ -383,7 +463,7 @@ Debes devolver EXACTAMENTE esta estructura JSON sin texto adicional:
         "sleep_hours": null,
         "fatigue_level": null,
         "stress_level": null,
-        "natural_query": "guardar pasos del 05/12/2024: 5000"
+        "natural_query": "guardar métricas del 05/12/2024: pasos: 5000"
       },
       "source_fragment": "caminé 5000 pasos"
     }]
@@ -391,7 +471,7 @@ Debes devolver EXACTAMENTE esta estructura JSON sin texto adicional:
 }
 ```
 
-### Ejemplo 8: Solo conversación
+### Ejemplo 9: Solo conversación
 **Entrada**: "Hola, ¿cómo estás?"
 **Salida**:
 ```json
@@ -407,7 +487,7 @@ Debes devolver EXACTAMENTE esta estructura JSON sin texto adicional:
 }
 ```
 
-### Ejemplo 9: Referencia contextual simple
+### Ejemplo 10: Referencia contextual simple
 **Contexto de la conversación**:
 - Usuario: "¿Qué media de peso tuve el mes de noviembre?"
 - Bot: "La media fue 67,5kg"
@@ -430,7 +510,7 @@ Debes devolver EXACTAMENTE esta estructura JSON sin texto adicional:
 ```
 **Justificación**: El historial muestra que el usuario preguntó por "media de peso" de noviembre, por lo tanto "la de enero" se refiere a "media de peso de enero". El natural_query resuelve la referencia implícita y usa fechas exactas.
 
-### Ejemplo 10: Múltiples referencias contextuales
+### Ejemplo 11: Múltiples referencias contextuales
 **Contexto de la conversación**:
 - Usuario: "¿Cuántos pasos di ayer?"
 - Bot: "Ayer diste 8500 pasos"
@@ -455,7 +535,7 @@ Debes devolver EXACTAMENTE esta estructura JSON sin texto adicional:
 ```
 **Justificación**: El historial muestra que toda la conversación trata sobre "pasos", por lo tanto "cuántos" se refiere a pasos. El natural_query resuelve la referencia implícita y usa fecha exacta.
 
-### Ejemplo 11: Contexto con save_metric
+### Ejemplo 12: Contexto con save_metric
 **Contexto de la conversación**:
 - Usuario: "Ayer pesé 75kg"
 - Bot: "Registrado: peso de 75kg"
@@ -474,7 +554,7 @@ Debes devolver EXACTAMENTE esta estructura JSON sin texto adicional:
         "sleep_hours": null,
         "fatigue_level": null,
         "stress_level": null,
-        "natural_query": "guardar peso del 05/12/2024: 74.5 kg"
+        "natural_query": "guardar métricas del 05/12/2024: peso: 74.5 kg"
       },
       "source_fragment": "peso 74.5"
     }]
@@ -483,7 +563,7 @@ Debes devolver EXACTAMENTE esta estructura JSON sin texto adicional:
 ```
 **Justificación**: Aunque dice "peso 74.5" sin especificar unidad, el historial confirma que se trata de peso en kg. El natural_query incluye fecha exacta.
 
-### Ejemplo 12: Comparación contextual
+### Ejemplo 13: Comparación contextual
 **Contexto de la conversación**:
 - Usuario: "Mi nivel de estrés hoy es 7"
 - Bot: "Registrado: estrés nivel 7"
@@ -506,7 +586,7 @@ Debes devolver EXACTAMENTE esta estructura JSON sin texto adicional:
 ```
 **Justificación**: El historial indica que se habló de "nivel de estrés", por lo tanto "cómo estuvo ayer" se refiere al nivel de estrés de ayer. El natural_query resuelve la referencia implícita y usa fecha exacta.
 
-### Ejemplo 13: Fecha futura - NO permitido
+### Ejemplo 14: Fecha futura - NO permitido
 **Entrada**: "Mañana voy a pesar 70kg"
 **Salida**:
 ```json
@@ -523,7 +603,7 @@ Debes devolver EXACTAMENTE esta estructura JSON sin texto adicional:
 ```
 **Justificación**: "Mañana" es una fecha futura. Las fechas futuras NO son permitidas en save_metric ni query_metric, por lo tanto se clasifica como conversation.
 
-### Ejemplo 14: Métricas faltantes
+### Ejemplo 15: Métricas faltantes
 **Entrada**: "¿Qué datos me faltan registrar hoy?" (asumiendo que hoy es 05/12/2024)
 **Salida**:
 ```json
@@ -542,7 +622,7 @@ Debes devolver EXACTAMENTE esta estructura JSON sin texto adicional:
 ```
 **Justificación**: El usuario pregunta por métricas que no ha registrado. El natural_query es claro e indica que se deben buscar campos null (peso, pasos, sueño, fatiga, estrés) para la fecha exacta del 05/12/2024.
 
-### Ejemplo 15: Métricas faltantes con fecha específica
+### Ejemplo 16: Métricas faltantes con fecha específica
 **Entrada**: "¿Qué no registré el día 15?" (asumiendo que estamos en diciembre 2024)
 **Salida**:
 ```json
@@ -580,8 +660,10 @@ Debes devolver EXACTAMENTE esta estructura JSON sin texto adicional:
 15. Usa {{ $now.format('YYYY-MM-DD') }} como fecha de referencia para calcular todas las fechas relativas
 16. NUNCA clasificar como save_metric o query_metric si la fecha es futura (solo pasado y hoy son válidos)
 17. Para consultas de métricas faltantes, usar formato: "buscar métricas faltantes (null) del DD/MM/AAAA" (fecha única)
-18. Para save_metric: formato "guardar [métrica] del DD/MM/AAAA: [valor]" (fecha única)
+18. **Para save_metric**: formato OBLIGATORIO `"guardar métricas del DD/MM/AAAA: <lista>"` donde lista incluye solo métricas con valor (peso: X kg, sueño: Xh, pasos: X, fatiga: X/10, estrés: X/10)
 19. Para query_metric: puede ser fecha única "pasos del DD/MM/AAAA" o rango "promedio del DD/MM/AAAA al DD/MM/AAAA"
+20. **CRÍTICO**: AGRUPA todas las métricas de la MISMA FECHA en UNA SOLA intención save_metric (no crees múltiples intenciones para el mismo día)
+21. Si hay métricas de DIFERENTES FECHAS, crea una intención save_metric separada por cada fecha
 
 ## VALIDACIÓN FINAL
 
@@ -591,7 +673,7 @@ Antes de devolver el JSON, verifica:
 - ✓ Array "intents" con al menos un objeto
 - ✓ Cada intent tiene: category, data, source_fragment
 - ✓ Para save_metric: los 6 campos siempre presentes (weight, steps, sleep_hours, fatigue_level, stress_level, natural_query)
-- ✓ Para save_metric: el campo "natural_query" sigue formato "guardar [métrica] del DD/MM/AAAA: [valor]" (fecha única)
+- ✓ **Para save_metric**: el campo "natural_query" DEBE seguir el formato OBLIGATORIO `"guardar métricas del DD/MM/AAAA: <lista>"` con solo las métricas que tienen valor
 - ✓ Para query_metric: campo "natural_query" presente y claro
 - ✓ El "natural_query" puede contener una fecha única (DD/MM/AAAA) o un rango (DD/MM/AAAA al DD/MM/AAAA)
 - ✓ El "natural_query" SIEMPRE incluye fecha exacta en formato DD/MM/AAAA (nunca "hoy", "ayer", sino 05/12/2024)
@@ -599,6 +681,8 @@ Antes de devolver el JSON, verifica:
 - ✓ El "natural_query" resuelve referencias implícitas (no contiene "la", "eso", "lo mismo")
 - ✓ Para consultas de métricas faltantes: natural_query usa formato "buscar métricas faltantes (null) del DD/MM/AAAA" (fecha única)
 - ✓ Para rangos de fechas en query_metric: usar formato "del DD/MM/AAAA al DD/MM/AAAA"
+- ✓ **CRÍTICO**: Si hay múltiples métricas del MISMO DÍA, están agrupadas en UNA SOLA intención save_metric
+- ✓ **CRÍTICO**: Si hay métricas de DIFERENTES FECHAS, hay una intención save_metric por cada fecha
 - ✓ Valores null para campos no mencionados
 - ✓ No hay texto fuera del JSON
 - ✓ JSON válido y bien formateado
