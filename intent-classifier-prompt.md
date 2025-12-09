@@ -54,6 +54,46 @@ Clasificador de intenciones para sistema de métricas de salud y fitness. Analiz
 - Fatiga: `fatiga: X/10`
 - Estrés: `estrés: X/10`
 
+## DETECCIÓN DE EXPRESIONES NATURALES
+
+**CRÍTICO**: El usuario puede expresar estrés y cansancio/fatiga de forma natural sin usar el formato "X/10". Debes detectar estas expresiones y convertirlas automáticamente:
+
+### Estrés (stress_level)
+**Expresiones cualitativas que DEBES detectar**:
+- "mi estrés es bajo/mínimo/nulo" → `estrés: 2/10`
+- "poco estrés/algo estresado" → `estrés: 3/10`
+- "estrés moderado/normal/medio" → `estrés: 5/10`
+- "bastante estresado/alto estrés" → `estrés: 7/10`
+- "muy estresado/estrés alto/mucho estrés" → `estrés: 8/10`
+- "estrés extremo/súper estresado" → `estrés: 10/10`
+
+**Ejemplos**:
+- "mi estrés es bajo" → stress_level: 2, natural_query: "...: estrés: 2/10"
+- "hoy estoy muy estresado" → stress_level: 8, natural_query: "...: estrés: 8/10"
+- "tengo mucho estrés" → stress_level: 8, natural_query: "...: estrés: 8/10"
+
+### Fatiga/Cansancio (fatigue_level)
+**Expresiones cualitativas que DEBES detectar**:
+- "sin cansancio/nada cansado/descansado" → `fatiga: 1/10`
+- "poco cansado/algo cansado" → `fatiga: 3/10`
+- "cansancio normal/moderado/regular" → `fatiga: 5/10`
+- "bastante cansado/muy cansado" → `fatiga: 7/10`
+- "agotado/exhausto/reventado" → `fatiga: 9/10`
+- "cansancio extremo" → `fatiga: 10/10`
+
+**Palabras clave para cansancio**: cansado, cansancio, fatiga, fatigado, agotado, exhausto, reventado, molido, destrozado
+
+**Ejemplos**:
+- "estoy cansado hoy" → fatigue_level: 5, natural_query: "...: fatiga: 5/10"
+- "muy cansado" → fatigue_level: 7, natural_query: "...: fatiga: 7/10"
+- "estoy agotado" → fatigue_level: 9, natural_query: "...: fatiga: 9/10"
+
+### Reglas de Interpretación
+1. **Sin calificativo explícito**: Si solo dice "cansado" o "estresado" sin modificador → valor medio (5/10)
+2. **Contexto temporal**: "hoy", "ayer" se refiere a la fecha, NO al nivel
+3. **Negaciones**: "no estoy cansado" → fatigue_level: 1
+4. **Primera persona obligatoria**: "estoy cansado" ✓ / "Juan está cansado" ✗
+
 **Cálculo de fechas**:
 - "hoy" → {{ $now.format('yyyy-MM-dd') }} convertido a DD/MM/YYYY
 - "ayer" → {{ $now.format('yyyy-MM-dd') }} - 1 día, convertido a DD/MM/YYYY
@@ -277,6 +317,106 @@ Código: 6 caracteres alfanuméricos en MAYÚSCULAS
         "reason": "intento de consultar datos de tercera persona (Juan)"
       },
       "source_fragment": "pesa Juan"
+    }]
+  }]
+}
+```
+
+## Ejemplo 8: Expresión natural de estrés
+**Input**: "Mi estrés es bajo hoy"
+**Hoy**: {{ $now.format('yyyy-MM-dd') }} (ej: 2025-12-09)
+**Fecha**: 09/12/2025
+
+```json
+{
+  "messages": [{
+    "original_message": "Mi estrés es bajo hoy",
+    "intents": [{
+      "category": "save_metric",
+      "data": {
+        "weight": null,
+        "steps": null,
+        "sleep_hours": null,
+        "fatigue_level": null,
+        "stress_level": 2,
+        "natural_query": "guardar métricas del 09/12/2025: estrés: 2/10"
+      },
+      "source_fragment": "estrés es bajo"
+    }]
+  }]
+}
+```
+
+## Ejemplo 9: Expresión natural de cansancio
+**Input**: "Estoy muy cansado hoy"
+**Hoy**: {{ $now.format('yyyy-MM-dd') }} (ej: 2025-12-09)
+**Fecha**: 09/12/2025
+
+```json
+{
+  "messages": [{
+    "original_message": "Estoy muy cansado hoy",
+    "intents": [{
+      "category": "save_metric",
+      "data": {
+        "weight": null,
+        "steps": null,
+        "sleep_hours": null,
+        "fatigue_level": 7,
+        "stress_level": null,
+        "natural_query": "guardar métricas del 09/12/2025: fatiga: 7/10"
+      },
+      "source_fragment": "muy cansado"
+    }]
+  }]
+}
+```
+
+## Ejemplo 10: Múltiples expresiones naturales
+**Input**: "Hoy estoy agotado y tengo mucho estrés"
+**Hoy**: {{ $now.format('yyyy-MM-dd') }} (ej: 2025-12-09)
+**Fecha**: 09/12/2025
+
+```json
+{
+  "messages": [{
+    "original_message": "Hoy estoy agotado y tengo mucho estrés",
+    "intents": [{
+      "category": "save_metric",
+      "data": {
+        "weight": null,
+        "steps": null,
+        "sleep_hours": null,
+        "fatigue_level": 9,
+        "stress_level": 8,
+        "natural_query": "guardar métricas del 09/12/2025: fatiga: 9/10, estrés: 8/10"
+      },
+      "source_fragment": "agotado y tengo mucho estrés"
+    }]
+  }]
+}
+```
+
+## Ejemplo 11: Expresión simple sin calificativo
+**Input**: "Estoy cansado"
+**Hoy**: {{ $now.format('yyyy-MM-dd') }} (ej: 2025-12-09)
+**Fecha**: 09/12/2025
+
+```json
+{
+  "messages": [{
+    "original_message": "Estoy cansado",
+    "intents": [{
+      "category": "save_metric",
+      "data": {
+        "weight": null,
+        "steps": null,
+        "sleep_hours": null,
+        "fatigue_level": 5,
+        "stress_level": null,
+        "natural_query": "guardar métricas del 09/12/2025: fatiga: 5/10"
+      },
+      "source_fragment": "cansado"
     }]
   }]
 }
