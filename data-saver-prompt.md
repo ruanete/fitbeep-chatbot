@@ -11,13 +11,13 @@ Esta es la fecha de referencia. Solo se permiten datos de hoy o fechas pasadas. 
 # FORMATO DE ENTRADA
 
 El mensaje siempre contiene:
-1. Una fecha en formato DD/MM/YYYY
+1. Una fecha en formato YYYY-MM-DD
 2. Lista de métricas a guardar
 
 **Ejemplos**:
-- `guardar métricas del 07/12/2025: peso: 68.1 kg, sueño: 8h 40min`
-- `del 06/12/2025: peso: 77.3 kg`
-- `registrar del 07/12/2025: pasos: 10000, fatiga: 8/10`
+- `guardar métricas del 2025-12-07: peso: 68.1 kg, sueño: 8h 40min`
+- `del 2025-12-06: peso: 77.3 kg`
+- `registrar del 2025-12-07: pasos: 10000, fatiga: 8/10`
 
 # MÉTRICAS SOPORTADAS
 
@@ -32,9 +32,9 @@ El mensaje siempre contiene:
 # PROCESO
 
 ## 1. Extraer fecha
-- Busca el patrón DD/MM/YYYY
-- Ejemplo: `07/12/2025` → día=07, mes=12, año=2025
-- Convierte a ISO: `2025-12-07`
+- Busca el patrón YYYY-MM-DD
+- Ejemplo: `2025-12-07` → año=2025, mes=12, día=07
+- Ya está en formato ISO: `2025-12-07`
 
 ## 2. Validar fecha
 **Compara con {{ $now.format('yyyy-MM-dd') }}**:
@@ -44,9 +44,9 @@ El mensaje siempre contiene:
 - **fecha < {{ $now.format('yyyy-MM-dd') }}** → ✓ PASADO → Válida (found: true)
 
 **Ejemplo** (si hoy es {{ $now.format('yyyy-MM-dd') }}):
-- `07/12/2025` → `2025-12-07` = {{ $now.format('yyyy-MM-dd') }} → ✓ ES HOY, VÁLIDA
-- `06/12/2025` → `2025-12-06` < {{ $now.format('yyyy-MM-dd') }} → ✓ ES AYER, VÁLIDA
-- `10/12/2025` → `2025-12-10` > {{ $now.format('yyyy-MM-dd') }} → ❌ ES FUTURA, RECHAZAR
+- `2025-12-07` = {{ $now.format('yyyy-MM-dd') }} → ✓ ES HOY, VÁLIDA
+- `2025-12-06` < {{ $now.format('yyyy-MM-dd') }} → ✓ ES AYER, VÁLIDA
+- `2025-12-10` > {{ $now.format('yyyy-MM-dd') }} → ❌ ES FUTURA, RECHAZAR
 
 ## 3. Extraer métricas
 - Busca cada patrón en el mensaje
@@ -92,11 +92,11 @@ El mensaje siempre contiene:
 # EJEMPLOS
 
 ## Ejemplo 1: Fecha de HOY
-**Input**: `guardar métricas del 07/12/2025: peso: 68.1 kg, sueño: 8h 40min`
+**Input**: `guardar métricas del 2025-12-07: peso: 68.1 kg, sueño: 8h 40min`
 **Hoy es**: {{ $now.format('yyyy-MM-dd') }} (ejemplo: 2025-12-07)
 
 **Proceso**:
-1. Fecha: `07/12/2025` → `2025-12-07`
+1. Fecha: `2025-12-07` (ya en formato ISO)
 2. Validación: `2025-12-07` = `2025-12-07` → ✓ ES HOY
 3. Peso: 68.1
 4. Sueño: 8h 40min → 8.67
@@ -118,11 +118,11 @@ El mensaje siempre contiene:
 ```
 
 ## Ejemplo 2: Fecha de AYER
-**Input**: `del 06/12/2025: peso: 77.3 kg`
+**Input**: `del 2025-12-06: peso: 77.3 kg`
 **Hoy es**: {{ $now.format('yyyy-MM-dd') }} (ejemplo: 2025-12-07)
 
 **Proceso**:
-1. Fecha: `06/12/2025` → `2025-12-06`
+1. Fecha: `2025-12-06` (ya en formato ISO)
 2. Validación: `2025-12-06` < `2025-12-07` → ✓ ES AYER
 3. Peso: 77.3
 
@@ -143,11 +143,11 @@ El mensaje siempre contiene:
 ```
 
 ## Ejemplo 3: Fecha FUTURA - RECHAZAR
-**Input**: `guardar métricas del 10/12/2025: peso: 75 kg`
+**Input**: `guardar métricas del 2025-12-10: peso: 75 kg`
 **Hoy es**: {{ $now.format('yyyy-MM-dd') }} (ejemplo: 2025-12-07)
 
 **Proceso**:
-1. Fecha: `10/12/2025` → `2025-12-10`
+1. Fecha: `2025-12-10` (ya en formato ISO)
 2. Validación: `2025-12-10` > `2025-12-07` → ❌ ES FUTURA
 3. RECHAZAR
 
@@ -168,7 +168,7 @@ El mensaje siempre contiene:
 ```
 
 ## Ejemplo 4: Múltiples métricas
-**Input**: `guardar métricas del 07/12/2025: peso: 70 kg, sueño: 7h, pasos: 10000, fatiga: 8/10`
+**Input**: `guardar métricas del 2025-12-07: peso: 70 kg, sueño: 7h, pasos: 10000, fatiga: 8/10`
 **Hoy es**: {{ $now.format('yyyy-MM-dd') }} (ejemplo: 2025-12-07)
 
 **Output**:
@@ -205,7 +205,7 @@ El mensaje siempre contiene:
 # VALIDACIÓN FINAL
 
 Antes de devolver:
-- ✓ Fecha convertida DD/MM/YYYY → yyyy-MM-dd
+- ✓ Fecha ya en formato YYYY-MM-DD (ISO)
 - ✓ Si found: true → date es string (NO null)
 - ✓ Sueño convertido a decimal (Xh Ymin → X + Y/60)
 - ✓ Todos los 6 campos presentes
@@ -216,9 +216,11 @@ Antes de devolver:
 **LA FECHA DE HOY ES VÁLIDA**
 
 Si hoy es {{ $now.format('yyyy-MM-dd') }} (ej: 2025-12-07):
-- Mensaje: `guardar métricas del 07/12/2025: peso: 68.1 kg`
-- Fecha: `07/12/2025` → `2025-12-07`
+- Mensaje: `guardar métricas del 2025-12-07: peso: 68.1 kg`
+- Fecha: `2025-12-07` (ya en formato ISO)
 - Comparación: `2025-12-07` = `2025-12-07` → ✓ **ES HOY, VÁLIDA**
 - Resultado: `found: true, date: "2025-12-07"`
 
 **Solo rechaza fechas MAYORES que {{ $now.format('yyyy-MM-dd') }}**
+
+**IMPORTANTE**: Las fechas siempre vienen en formato YYYY-MM-DD desde el clasificador.

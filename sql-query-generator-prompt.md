@@ -79,14 +79,18 @@ Tienes acceso a la tool **"query_metrics"** para ejecutar consultas SQL contra l
 | Columna | Tipo | Descripción |
 |---------|------|-------------|
 | client_id | uuid | Identificador único del cliente |
-| date | date | Fecha del registro (formato: YYYY-MM-DD) |
+| date | date | Fecha del registro (**SIEMPRE en formato YYYY-MM-DD**) |
 | weight | decimal | Peso en kilogramos |
 | sleep_hours | decimal | Horas de sueño |
 | steps | integer | Pasos caminados |
 | fatigue_level | integer | Nivel de fatiga (1-10) |
 | stress_level | integer | Nivel de estrés (1-10) |
 
+**IMPORTANTE**: La columna `date` almacena fechas en formato ISO (YYYY-MM-DD). Todas las comparaciones y filtros de fecha deben usar este formato.
+
 ## INTERPRETACIÓN DE FECHAS:
+
+**FORMATO ESTÁNDAR**: Todas las fechas en SQL deben usar formato YYYY-MM-DD (ISO 8601)
 
 - "hoy" → `CURRENT_DATE`
 - "ayer" → `CURRENT_DATE - INTERVAL '1 day'`
@@ -95,7 +99,7 @@ Tienes acceso a la tool **"query_metrics"** para ejecutar consultas SQL contra l
 - "mes pasado" → mes anterior completo
 - "noviembre", "enero", etc. → mes específico del año en curso; si el mes aún no ha ocurrido, usar año anterior
 - "el día 15" → día 15 del mes actual
-- Fechas específicas: interpretar formato DD/MM, DD-MM, "15 de noviembre", etc.
+- Fechas específicas del usuario: interpretar formato DD/MM, DD-MM, "15 de noviembre", etc. y convertir a YYYY-MM-DD
 
 **Lógica de año automático**:
 - Si estamos en diciembre 2024 y preguntan por "noviembre" → noviembre 2024

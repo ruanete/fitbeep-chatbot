@@ -43,11 +43,11 @@ Clasificador de intenciones para sistema de métricas de salud y fitness. Analiz
   "sleep_hours": <número o null>,
   "fatigue_level": <1-10 o null>,
   "stress_level": <1-10 o null>,
-  "natural_query": "guardar métricas del DD/MM/YYYY: [lista]"
+  "natural_query": "guardar métricas del YYYY-MM-DD: [lista]"
 }
 ```
 
-**Formato natural_query**: `"guardar métricas del DD/MM/YYYY: [métricas]"`
+**Formato natural_query**: `"guardar métricas del YYYY-MM-DD: [métricas]"`
 - Peso: `peso: X kg`
 - Sueño: `sueño: Xh Ymin` o `sueño: Xh`
 - Pasos: `pasos: X`
@@ -95,15 +95,15 @@ Clasificador de intenciones para sistema de métricas de salud y fitness. Analiz
 4. **Primera persona obligatoria**: "estoy cansado" ✓ / "Juan está cansado" ✗
 
 **Cálculo de fechas**:
-- "hoy" → {{ $now.format('yyyy-MM-dd') }} convertido a DD/MM/YYYY
-- "ayer" → {{ $now.format('yyyy-MM-dd') }} - 1 día, convertido a DD/MM/YYYY
-- "anteayer" → {{ $now.format('yyyy-MM-dd') }} - 2 días, convertido a DD/MM/YYYY
+- "hoy" → {{ $now.format('yyyy-MM-dd') }}
+- "ayer" → {{ $now.format('yyyy-MM-dd') }} - 1 día
+- "anteayer" → {{ $now.format('yyyy-MM-dd') }} - 2 días
 
 **Ejemplo**:
 - Input: "Hoy peso 70kg"
 - Si {{ $now.format('yyyy-MM-dd') }} = 2025-12-07
-- Fecha: 07/12/2025
-- natural_query: `"guardar métricas del 07/12/2025: peso: 70 kg"`
+- Fecha: 2025-12-07
+- natural_query: `"guardar métricas del 2025-12-07: peso: 70 kg"`
 
 # CATEGORÍA: query_metric
 
@@ -117,20 +117,20 @@ Clasificador de intenciones para sistema de métricas de salud y fitness. Analiz
 ```
 
 **Formatos**:
-- Fecha única: `"[métrica] del DD/MM/YYYY"`
-- Rango: `"[operación] de [métrica] del DD/MM/YYYY al DD/MM/YYYY"`
+- Fecha única: `"[métrica] del YYYY-MM-DD"`
+- Rango: `"[operación] de [métrica] del YYYY-MM-DD al YYYY-MM-DD"`
 
 **Cálculo de fechas**:
-- "hoy" → {{ $now.format('yyyy-MM-dd') }} → DD/MM/YYYY
-- "ayer" → {{ $now.format('yyyy-MM-dd') }} - 1 día → DD/MM/YYYY
+- "hoy" → {{ $now.format('yyyy-MM-dd') }}
+- "ayer" → {{ $now.format('yyyy-MM-dd') }} - 1 día
 - "esta semana" → 7 días hasta {{ $now.format('yyyy-MM-dd') }}
 - "este mes" → día 1 del mes hasta {{ $now.format('yyyy-MM-dd') }}
 
 **Ejemplo**:
 - Input: "¿Cuántos pasos di ayer?"
 - Si {{ $now.format('yyyy-MM-dd') }} = 2025-12-07
-- Ayer: 06/12/2025
-- natural_query: `"pasos del 06/12/2025"`
+- Ayer: 2025-12-06
+- natural_query: `"pasos del 2025-12-06"`
 
 # CATEGORÍA: register_as_client
 
@@ -174,7 +174,7 @@ Código: 6 caracteres alfanuméricos en MAYÚSCULAS
 ## Ejemplo 1: Save metric simple
 **Input**: "Hoy peso 70kg"
 **Hoy**: {{ $now.format('yyyy-MM-dd') }} (ej: 2025-12-07)
-**Fecha**: 07/12/2025
+**Fecha**: 2025-12-07
 
 ```json
 {
@@ -188,7 +188,7 @@ Código: 6 caracteres alfanuméricos en MAYÚSCULAS
         "sleep_hours": null,
         "fatigue_level": null,
         "stress_level": null,
-        "natural_query": "guardar métricas del 07/12/2025: peso: 70 kg"
+        "natural_query": "guardar métricas del 2025-12-07: peso: 70 kg"
       },
       "source_fragment": "peso 70kg"
     }]
@@ -199,7 +199,7 @@ Código: 6 caracteres alfanuméricos en MAYÚSCULAS
 ## Ejemplo 2: Save metric de ayer
 **Input**: "Ayer dormí 8h y caminé 10000 pasos"
 **Hoy**: {{ $now.format('yyyy-MM-dd') }} (ej: 2025-12-07)
-**Ayer**: 06/12/2025
+**Ayer**: 2025-12-06
 
 ```json
 {
@@ -213,7 +213,7 @@ Código: 6 caracteres alfanuméricos en MAYÚSCULAS
         "sleep_hours": 8,
         "fatigue_level": null,
         "stress_level": null,
-        "natural_query": "guardar métricas del 06/12/2025: sueño: 8h, pasos: 10000"
+        "natural_query": "guardar métricas del 2025-12-06: sueño: 8h, pasos: 10000"
       },
       "source_fragment": "dormí 8h y caminé 10000 pasos"
     }]
@@ -224,7 +224,7 @@ Código: 6 caracteres alfanuméricos en MAYÚSCULAS
 ## Ejemplo 3: Query metric
 **Input**: "¿Cuántos pasos di ayer?"
 **Hoy**: {{ $now.format('yyyy-MM-dd') }} (ej: 2025-12-07)
-**Ayer**: 06/12/2025
+**Ayer**: 2025-12-06
 
 ```json
 {
@@ -233,7 +233,7 @@ Código: 6 caracteres alfanuméricos en MAYÚSCULAS
     "intents": [{
       "category": "query_metric",
       "data": {
-        "natural_query": "pasos del 06/12/2025"
+        "natural_query": "pasos del 2025-12-06"
       },
       "source_fragment": "pasos di ayer"
     }]
@@ -244,7 +244,7 @@ Código: 6 caracteres alfanuméricos en MAYÚSCULAS
 ## Ejemplo 4: Query con rango
 **Input**: "¿Peso promedio esta semana?"
 **Hoy**: {{ $now.format('yyyy-MM-dd') }} (ej: 2025-12-07)
-**Esta semana**: 01/12/2025 al 07/12/2025
+**Esta semana**: 2025-12-01 al 2025-12-07
 
 ```json
 {
@@ -253,7 +253,7 @@ Código: 6 caracteres alfanuméricos en MAYÚSCULAS
     "intents": [{
       "category": "query_metric",
       "data": {
-        "natural_query": "promedio de peso del 01/12/2025 al 07/12/2025"
+        "natural_query": "promedio de peso del 2025-12-01 al 2025-12-07"
       },
       "source_fragment": "Peso promedio esta semana"
     }]
@@ -264,7 +264,7 @@ Código: 6 caracteres alfanuméricos en MAYÚSCULAS
 ## Ejemplo 5: Múltiples métricas mismo día
 **Input**: "Peso 75kg, dormí 7h y caminé 8000 pasos"
 **Hoy**: {{ $now.format('yyyy-MM-dd') }} (ej: 2025-12-07)
-**Todas del mismo día**: 07/12/2025
+**Todas del mismo día**: 2025-12-07
 
 ```json
 {
@@ -278,7 +278,7 @@ Código: 6 caracteres alfanuméricos en MAYÚSCULAS
         "sleep_hours": 7,
         "fatigue_level": null,
         "stress_level": null,
-        "natural_query": "guardar métricas del 07/12/2025: peso: 75 kg, sueño: 7h, pasos: 8000"
+        "natural_query": "guardar métricas del 2025-12-07: peso: 75 kg, sueño: 7h, pasos: 8000"
       },
       "source_fragment": "Peso 75kg, dormí 7h y caminé 8000 pasos"
     }]
@@ -325,7 +325,7 @@ Código: 6 caracteres alfanuméricos en MAYÚSCULAS
 ## Ejemplo 8: Expresión natural de estrés
 **Input**: "Mi estrés es bajo hoy"
 **Hoy**: {{ $now.format('yyyy-MM-dd') }} (ej: 2025-12-09)
-**Fecha**: 09/12/2025
+**Fecha**: 2025-12-09
 
 ```json
 {
@@ -339,7 +339,7 @@ Código: 6 caracteres alfanuméricos en MAYÚSCULAS
         "sleep_hours": null,
         "fatigue_level": null,
         "stress_level": 2,
-        "natural_query": "guardar métricas del 09/12/2025: estrés: 2/10"
+        "natural_query": "guardar métricas del 2025-12-09: estrés: 2/10"
       },
       "source_fragment": "estrés es bajo"
     }]
@@ -350,7 +350,7 @@ Código: 6 caracteres alfanuméricos en MAYÚSCULAS
 ## Ejemplo 9: Expresión natural de cansancio
 **Input**: "Estoy muy cansado hoy"
 **Hoy**: {{ $now.format('yyyy-MM-dd') }} (ej: 2025-12-09)
-**Fecha**: 09/12/2025
+**Fecha**: 2025-12-09
 
 ```json
 {
@@ -364,7 +364,7 @@ Código: 6 caracteres alfanuméricos en MAYÚSCULAS
         "sleep_hours": null,
         "fatigue_level": 7,
         "stress_level": null,
-        "natural_query": "guardar métricas del 09/12/2025: fatiga: 7/10"
+        "natural_query": "guardar métricas del 2025-12-09: fatiga: 7/10"
       },
       "source_fragment": "muy cansado"
     }]
@@ -375,7 +375,7 @@ Código: 6 caracteres alfanuméricos en MAYÚSCULAS
 ## Ejemplo 10: Múltiples expresiones naturales
 **Input**: "Hoy estoy agotado y tengo mucho estrés"
 **Hoy**: {{ $now.format('yyyy-MM-dd') }} (ej: 2025-12-09)
-**Fecha**: 09/12/2025
+**Fecha**: 2025-12-09
 
 ```json
 {
@@ -389,7 +389,7 @@ Código: 6 caracteres alfanuméricos en MAYÚSCULAS
         "sleep_hours": null,
         "fatigue_level": 9,
         "stress_level": 8,
-        "natural_query": "guardar métricas del 09/12/2025: fatiga: 9/10, estrés: 8/10"
+        "natural_query": "guardar métricas del 2025-12-09: fatiga: 9/10, estrés: 8/10"
       },
       "source_fragment": "agotado y tengo mucho estrés"
     }]
@@ -400,7 +400,7 @@ Código: 6 caracteres alfanuméricos en MAYÚSCULAS
 ## Ejemplo 11: Expresión simple sin calificativo
 **Input**: "Estoy cansado"
 **Hoy**: {{ $now.format('yyyy-MM-dd') }} (ej: 2025-12-09)
-**Fecha**: 09/12/2025
+**Fecha**: 2025-12-09
 
 ```json
 {
@@ -414,7 +414,7 @@ Código: 6 caracteres alfanuméricos en MAYÚSCULAS
         "sleep_hours": null,
         "fatigue_level": 5,
         "stress_level": null,
-        "natural_query": "guardar métricas del 09/12/2025: fatiga: 5/10"
+        "natural_query": "guardar métricas del 2025-12-09: fatiga: 5/10"
       },
       "source_fragment": "cansado"
     }]
@@ -428,21 +428,21 @@ Código: 6 caracteres alfanuméricos en MAYÚSCULAS
 
 | Término | Conversión | Ejemplo (hoy = 2025-12-07) |
 |---------|-----------|---------------------------|
-| hoy | {{ $now.format('yyyy-MM-dd') }} | 07/12/2025 |
-| ayer | hoy - 1 día | 06/12/2025 |
-| anteayer | hoy - 2 días | 05/12/2025 |
-| esta semana | 7 días hasta hoy | del 01/12/2025 al 07/12/2025 |
-| este mes | día 1 hasta hoy | del 01/12/2025 al 07/12/2025 |
+| hoy | {{ $now.format('yyyy-MM-dd') }} | 2025-12-07 |
+| ayer | hoy - 1 día | 2025-12-06 |
+| anteayer | hoy - 2 días | 2025-12-05 |
+| esta semana | 7 días hasta hoy | del 2025-12-01 al 2025-12-07 |
+| este mes | día 1 hasta hoy | del 2025-12-01 al 2025-12-07 |
 
-**Conversión**: yyyy-MM-dd → DD/MM/YYYY
-- 2025-12-07 → 07/12/2025
-- 2025-12-06 → 06/12/2025
+**Formato**: YYYY-MM-DD
+- 2025-12-07 → se mantiene como 2025-12-07
+- 2025-12-06 → se mantiene como 2025-12-06
 
 # VALIDACIÓN FINAL
 
 - ✓ Fechas calculadas desde {{ $now.format('yyyy-MM-dd') }}
-- ✓ Fechas en formato DD/MM/YYYY en natural_query
-- ✓ save_metric: formato "guardar métricas del DD/MM/YYYY: [lista]"
+- ✓ Fechas en formato YYYY-MM-DD en natural_query
+- ✓ save_metric: formato "guardar métricas del YYYY-MM-DD: [lista]"
 - ✓ Métricas mismo día agrupadas
 - ✓ No fechas futuras
 - ✓ Solo primera persona
@@ -455,4 +455,4 @@ Código: 6 caracteres alfanuméricos en MAYÚSCULAS
 3. NUNCA fechas futuras
 4. NUNCA terceros
 5. SIEMPRE agrupa métricas del mismo día
-6. SIEMPRE formato DD/MM/YYYY en natural_query
+6. SIEMPRE formato YYYY-MM-DD en natural_query
