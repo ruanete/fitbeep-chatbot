@@ -38,6 +38,7 @@ Clasificador de intenciones para sistema de métricas de salud y fitness. Analiz
 **Campos obligatorios**:
 ```json
 {
+  "date": "YYYY-MM-DD",
   "weight": <número o null>,
   "steps": <número o null>,
   "sleep_hours": <número o null>,
@@ -46,6 +47,8 @@ Clasificador de intenciones para sistema de métricas de salud y fitness. Analiz
   "natural_query": "guardar métricas del YYYY-MM-DD: [lista]"
 }
 ```
+
+**Campo date**: Fecha en formato YYYY-MM-DD en la que se quieren guardar las métricas. Este campo es obligatorio y debe coincidir con la fecha indicada en el natural_query.
 
 **Formato natural_query**: `"guardar métricas del YYYY-MM-DD: [métricas]"`
 - Peso: `peso: X kg`
@@ -183,6 +186,7 @@ Código: 6 caracteres alfanuméricos en MAYÚSCULAS
     "intents": [{
       "category": "save_metric",
       "data": {
+        "date": "2025-12-07",
         "weight": 70,
         "steps": null,
         "sleep_hours": null,
@@ -208,6 +212,7 @@ Código: 6 caracteres alfanuméricos en MAYÚSCULAS
     "intents": [{
       "category": "save_metric",
       "data": {
+        "date": "2025-12-06",
         "weight": null,
         "steps": 10000,
         "sleep_hours": 8,
@@ -273,6 +278,7 @@ Código: 6 caracteres alfanuméricos en MAYÚSCULAS
     "intents": [{
       "category": "save_metric",
       "data": {
+        "date": "2025-12-07",
         "weight": 75,
         "steps": 8000,
         "sleep_hours": 7,
@@ -334,6 +340,7 @@ Código: 6 caracteres alfanuméricos en MAYÚSCULAS
     "intents": [{
       "category": "save_metric",
       "data": {
+        "date": "2025-12-09",
         "weight": null,
         "steps": null,
         "sleep_hours": null,
@@ -359,6 +366,7 @@ Código: 6 caracteres alfanuméricos en MAYÚSCULAS
     "intents": [{
       "category": "save_metric",
       "data": {
+        "date": "2025-12-09",
         "weight": null,
         "steps": null,
         "sleep_hours": null,
@@ -384,6 +392,7 @@ Código: 6 caracteres alfanuméricos en MAYÚSCULAS
     "intents": [{
       "category": "save_metric",
       "data": {
+        "date": "2025-12-09",
         "weight": null,
         "steps": null,
         "sleep_hours": null,
@@ -409,6 +418,7 @@ Código: 6 caracteres alfanuméricos en MAYÚSCULAS
     "intents": [{
       "category": "save_metric",
       "data": {
+        "date": "2025-12-09",
         "weight": null,
         "steps": null,
         "sleep_hours": null,
